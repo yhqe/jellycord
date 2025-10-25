@@ -1,0 +1,16 @@
+export default {
+  // 1. Discord Application Client ID
+  // Go to https://discord.com/developers/applications, create an application,
+  // and get the Client ID from the "OAuth2" page.
+  discordClientId: 'DISCORD_CLIENT_ID_HERE',
+  // 2. Jellyfin Server URL
+  // The public URL of your Jellyfin server.
+  jellyfinServerUrl: 'https://your.jellyfinserver.here',
+  // 3. Jellyfin API Key
+  // In Jellyfin, go to Dashboard > API Keys, and create a new key.
+  jellyfinApiKey: 'YOUR_JELLYFIN_API_KEY_HERE',
+  // 4. Jellyfin User ID
+  // In Jellyfin, go to Dashboard > Users, click on your user,
+  // and copy the user ID from the URL.
+  jellyfinUserId: 'YOUR_JELLYFIN_USER_ID_HERE',
+};

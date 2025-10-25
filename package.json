@@ -1,0 +1,21 @@
+{
+    "name": "jellyfin-discord-rpc",
+    "version": "1.0.0",
+    "description": "A Discord Rich Presence for Jellyfin using the 'Listening' activity type.",
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "start": "node index.js"
+    },
+    "keywords": [
+        "jellyfin",
+        "discord",
+        "rpc"
+    ],
+    "author": "GitHub Copilot",
+    "license": "MIT",
+    "dependencies": {
+        "@xhayper/discord-rpc": "^1.1.2",
+        "axios": "^1.7.2"
+    }
+}
