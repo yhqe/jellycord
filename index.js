@@ -107,10 +107,13 @@ async function getJellyfinSession() {
         const response = await axios.get(`${config.jellyfinServerUrl}/Sessions`, {
             headers: { 'X-Emby-Token': config.jellyfinApiKey }
         });
+
+        const allowedTypes = new Set(['Audio', 'Movie', 'Episode', 'Video']);
+
         return response.data.find(s =>
             s.UserId === config.jellyfinUserId &&
             s.NowPlayingItem &&
-            s.NowPlayingItem.Type === 'Audio'
+            allowedTypes.has(s.NowPlayingItem.Type)
         );
     } catch (error) {
         if (error.code !== 'ECONNREFUSED') {
@@ -145,51 +148,67 @@ async function getAlbumArtUrl(albumId, trackId) {
 async function updatePresence() {
     const session = await getJellyfinSession();
 
-    if (session && session.NowPlayingItem) {
-        const track = session.NowPlayingItem;
-        const trackId = track.Id;
-        const albumId = track.AlbumId;
+    if (session && session.NowPlayingItem && session.PlayState && !session.PlayState.IsPaused) {
+        const item = session.NowPlayingItem;
+        const itemType = item.Type;
+        const currentId = `${itemType}:${item.Id}`;
 
-        if (trackId !== lastTrackId) {
-            lastTrackId = trackId;
-            console.log(`[Discord] Now listening to: ${track.Artists.join(', ')} - ${track.Name}`);
+        if (currentId !== lastTrackId) {
+            lastTrackId = currentId;
+
+            if (itemType === 'Audio') {
+                console.log(`[Discord] Now listening to: ${(item.Artists || []).join(', ')} - ${item.Name}`);
+            } else if (itemType === 'Movie') {
+                console.log(`[Discord] Now watching movie: ${item.Name}`);
+            } else if (itemType === 'Episode') {
+                console.log(`[Discord] Now watching TV: ${item.SeriesName || 'Unknown Show'} - ${item.Name}`);
+            } else {
+                console.log(`[Discord] Now playing: ${item.Name || itemType}`);
+            }
         }
 
-        // pass trackid for singles
-        const largeImageUrl = await getAlbumArtUrl(albumId, trackId);
+        let details = item.Name || 'Playing media';
+        let state = '';
+        let largeImageText = 'Jellyfin';
+        let artAlbumId = null;
+        let artTrackId = item.Id;
 
-        /*const presence = new Presence()
-            .setDetails(`${track.Name}`)
-            .setState(`by ${track.Artists.join(', ')}`)
-            .setLargeImage(`${config.jellyfinServerUrl}/Items/${track.AlbumId}/Images/Primary`)
-            .setLargeText(`on ${track.Album}`)
-            .setSmallImage('jellyfin_logo')
-            .setSmallText('Jellyfin')
-            .setStartTimestamp(Date.now() - Math.floor(session.PlayState.PositionTicks / 10000))
-            .addButton('Listen on Jellyfin', `${config.jellyfinServerUrl}/web/index.html#!/details?id=${trackId}`);
+        if (itemType === 'Audio') {
+            details = item.Name;
+            state = `by ${(item.Artists || []).join(', ') || 'Unknown Artist'}`;
+            largeImageText = `on ${item.Album || 'Unknown Album'}`;
+            artAlbumId = item.AlbumId;
+        } else if (itemType === 'Movie') {
+            details = item.Name;
+            state = `Watching movie`;
+            largeImageText = item.ProductionYear ? `${item.ProductionYear}` : 'Movie';
+            artAlbumId = item.ParentId || null;
+        } else if (itemType === 'Episode') {
+            details = item.Name;
+            state = `${item.SeriesName || 'TV Show'}${item.ParentIndexNumber != null && item.IndexNumber != null
+                ? ` • S${String(item.ParentIndexNumber).padStart(2, '0')}E${String(item.IndexNumber).padStart(2, '0')}`
+                : ''}`;
+            largeImageText = item.SeriesName || 'TV Show';
+            artAlbumId = item.SeriesId || item.SeasonId || null;
+        }
 
-        presence.data.type = 2; // Type 2 is for "Listening"*/
+        const largeImageUrl = await getAlbumArtUrl(artAlbumId, artTrackId);
 
         client.user?.setActivity({
-            details: `${track.Name}`,
-            state: `by ${track.Artists.join(', ')}`,
+            details,
+            state,
             largeImageKey: largeImageUrl,
-            largeImageText: `on ${track.Album}`,
+            largeImageText,
             smallImageKey: 'jellyfin_logo',
             smallImageText: 'Jellyfin',
             startTimestamp: Date.now() - Math.floor(session.PlayState.PositionTicks / 10000),
-            buttons: [
-                {
-                    label: 'Listen on Jellyfin',
-                    url: `${config.jellyfinServerUrl}/web/index.html#!/details?id=${trackId}`
-                }
-            ],
-            type: 2 // Type 2 is for "Listening"
+            endTimestamp: Date.now() + Math.floor((item.RunTimeTicks - session.PlayState.PositionTicks) / 10000),
+            type: itemType === 'Audio' ? 2 : 3
         });
 
     } else {
         if (lastTrackId !== null) {
-            console.log('[Discord] Playback stopped. Clearing presence.');
+            console.log('[Discord] Playback stopped or paused. Clearing presence.');
             lastTrackId = null;
             client.user?.clearActivity();
         }
