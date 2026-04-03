@@ -1,7 +1,7 @@
 {
-    "name": "jellyfin-discord-rpc",
+    "name": "jellycord",
     "version": "1.0.0",
-    "description": "A Discord Rich Presence for Jellyfin using the 'Listening' activity type.",
+    "description": "a discord rich presence for jellyfin",
     "main": "index.js",
     "type": "module",
     "scripts": {
